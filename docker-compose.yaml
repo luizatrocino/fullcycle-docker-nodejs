@@ -1,0 +1,48 @@
+version: '3' #versão da config do docker-compose
+
+services:
+
+  db:
+    image: mysql:5.7
+    command: --innodb-use-native-aio=0
+    container_name: db
+    restart: always
+    tty: true
+    volumes:
+      - ./mysql:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      - MYSQL_DATABASE=desafiofull
+      - MYSQL_ROOT_PASSWORD=root
+    networks:
+      - net-desafio2
+
+  nginx:
+    restart: always
+    build:
+      context: nginx
+    container_name: nginx
+    restart: always
+    networks:
+      - net-desafio2
+    ports:
+      - "8080:80"
+    depends_on:
+      - app
+
+  app:
+    build:
+      context: nodejs #indicando onde está o dockerfile
+    container_name: app
+    entrypoint: dockerize -wait tcp://db:3306 -timeout 20s docker-entrypoint.sh
+    networks:
+      - net-desafio2
+    volumes: 
+      - ./nodejs:/usr/src/app
+    tty: true
+    depends_on:
+      - db
+
+networks:
+  net-desafio2:
+    driver: bridge
