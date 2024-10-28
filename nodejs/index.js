@@ -11,29 +11,44 @@ const config = {
 const mysql = require('mysql')
 const connection = mysql.createConnection(config)
 
-const sql = `INSERT INTO people(name) values ('Luiza')`
-connection.query(sql)
-
-app.get('/', (req, res) => {
-    //const name = faker.name.findName()
-    //connection.query(`INSERT INTO people (nome) VALUES ('${name}')`)
-
-    // Realiza o SELECT no banco de dados
-    connection.query('SELECT * FROM people', (error, results) => {
+function executeQuery(sqlExpression, params = []) {
+  return new Promise((resolve, reject) => {
+    connection.query(sqlExpression, params, (error, results) => {
       if (error) {
-        return res.status(500).send('Erro ao realizar a consulta no banco de dados.');
+        return reject(error);
       }
-  
-      // Cria uma string HTML para mostrar os resultados
-      let htmlResponse = '<h1>Full Cycle Rocks!</h1><br><ul>';
-      results.forEach(row => {
-        htmlResponse += `<li>${JSON.stringify(row)}</li>`;
-      });
-      htmlResponse += '</ul>';
-  
-      // Envia a resposta
-      res.send(htmlResponse);  
+      resolve(results);
     });
+  });
+}
+
+async function insertNewRandonPerson() {
+  const randomName = faker.name.findName();
+  await executeQuery(`INSERT INTO people(name) values (?)`, [randomName]);
+  return randomName
+}
+
+async function getAllNamesInHtmlFormat() {
+  const rows = executeQuery('SELECT * FROM people')
+  
+  let htmlResponse = '<h1>Full Cycle Rocks!</h1><br><ul>';
+  rows.forEach(row => {
+    htmlResponse += `<li>${JSON.stringify(row)}</li>`;
+  });
+  htmlResponse += '</ul>';
+  return htmlResponse
+}
+
+app.get('/', async (req, res) => {
+  try {
+    await insertNewRandonPerson()
+    const htmlResponse = await getAllNamesInHtmlFormat();
+ 
+    res.send(htmlResponse);  
+  } catch (error) {
+    console.error(`Erro ao conectar-se ao banco de dados: ${error}`);
+    res.status(500).send('Erro de servidor');
+  }
   });
 
 app.listen(port, () => {
